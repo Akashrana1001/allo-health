@@ -15,6 +15,6 @@
     "sourceMap": true,
     "removeComments": false
   },
-  "include": ["src/**/*", "prisma/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
