@@ -6,38 +6,38 @@ const prisma = new PrismaClient();
 const products: { name: string; description: string; imageUrl: string; price: number }[] = [
   {
     name: "Running Shoes X1",
-    description: "Lightweight daily trainer with responsive cushioning.",
-    imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600",
+    description: "Lightweight daily trainer with responsive cushioning for every stride.",
+    imageUrl: "https://picsum.photos/seed/running-shoes/600/400",
     price: 4999,
   },
   {
     name: "Yoga Mat Pro",
     description: "Non-slip 6mm mat with alignment lines, ideal for all styles.",
-    imageUrl: "https://images.unsplash.com/photo-1601925228104-ad4bd1bc3dc2?w=600",
+    imageUrl: "https://picsum.photos/seed/yoga-mat/600/400",
     price: 1299,
   },
   {
     name: "Resistance Band Set",
     description: "Set of 5 latex bands with progressive resistance levels.",
-    imageUrl: "https://images.unsplash.com/photo-1598289431512-b97b0917affc?w=600",
+    imageUrl: "https://picsum.photos/seed/resistance-bands/600/400",
     price: 699,
   },
   {
     name: "Foam Roller",
     description: "High-density EVA foam roller for post-workout recovery.",
-    imageUrl: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600",
+    imageUrl: "https://picsum.photos/seed/foam-roller/600/400",
     price: 999,
   },
   {
     name: "Gym Gloves",
     description: "Full-palm protection with wrist support for heavy lifts.",
-    imageUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=600",
+    imageUrl: "https://picsum.photos/seed/gym-gloves/600/400",
     price: 499,
   },
   {
     name: "Adjustable Dumbbell",
-    description: "Single 5–25 kg adjustable dumbbell. Very limited stock.",
-    imageUrl: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600",
+    description: "Single 5–25 kg adjustable dumbbell. Very limited stock — great for demo.",
+    imageUrl: "https://picsum.photos/seed/dumbbell/600/400",
     price: 8999,
   },
 ];

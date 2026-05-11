@@ -75,9 +75,25 @@ router.post("/:id/confirm", async (req, res, next) => {
       if (reservation.status === "RELEASED") throw new ReservationExpiredError("Reservation was cancelled");
       if (reservation.expiresAt <= new Date()) throw new ReservationExpiredError();
 
-      const updated = await prisma.reservation.update({
-        where: { id: reservation.id },
-        data: { status: "CONFIRMED", confirmedAt: new Date() },
+      // Permanently deduct from inventory inside the same transaction so the
+      // units are no longer visible in availableQuantity calculations.
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.inventory.update({
+          where: {
+            productId_warehouseId: {
+              productId: reservation.productId,
+              warehouseId: reservation.warehouseId,
+            },
+          },
+          data: {
+            totalQuantity: { decrement: reservation.units },
+            reservedQuantity: { decrement: reservation.units },
+          },
+        });
+        return tx.reservation.update({
+          where: { id: reservation.id },
+          data: { status: "CONFIRMED", confirmedAt: new Date() },
+        });
       });
 
       return { body: serializeReservation(updated), status: 200 };
