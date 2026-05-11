@@ -47,7 +47,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
   return (
     <>
-      <div className="group relative flex flex-col rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
+      <div className="group relative z-0 hover:z-10 flex flex-col rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300">
 
         {/* ── Image area ─────────────────────────────────────────── */}
         <div className="relative h-52 w-full overflow-hidden">
@@ -64,7 +64,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               alt={product.name}
               fill
               priority={priority}
-              className={`object-cover transition-opacity duration-500 group-hover:scale-105 transition-transform ${
+              className={`object-cover transition-[opacity,transform] duration-500 group-hover:scale-105 ${
                 imgLoaded ? "opacity-100" : "opacity-0"
               }`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
