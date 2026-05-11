@@ -6,48 +6,74 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReserveModal } from "./reserve-modal";
 import type { Product } from "@/lib/schemas";
-import { MapPin, ShoppingBag } from "lucide-react";
+import { MapPin, Dumbbell, Footprints, Layers, Wind, Hand, CircleDot } from "lucide-react";
+
+// Deterministic gradient + icon per product so something beautiful shows instantly
+const THEMES = [
+  { gradient: "from-blue-400 to-indigo-600",    Icon: Footprints  },
+  { gradient: "from-purple-400 to-pink-600",     Icon: Layers      },
+  { gradient: "from-emerald-400 to-teal-600",    Icon: Wind        },
+  { gradient: "from-orange-400 to-red-500",      Icon: CircleDot   },
+  { gradient: "from-amber-400 to-orange-500",    Icon: Hand        },
+  { gradient: "from-slate-500 to-blue-700",      Icon: Dumbbell    },
+];
+
+function getTheme(name: string) {
+  const idx = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % THEMES.length;
+  return THEMES[idx];
+}
 
 function StockBadge({ qty }: { qty: number }) {
   if (qty === 0)
-    return <Badge variant="danger" className="text-[10px] px-1.5 py-0">Out of Stock</Badge>;
+    return <Badge variant="danger"  className="text-[10px] px-1.5 py-0">Out of Stock</Badge>;
   if (qty <= 5)
     return <Badge variant="warning" className="text-[10px] px-1.5 py-0">Low: {qty}</Badge>;
-  return <Badge variant="success" className="text-[10px] px-1.5 py-0">{qty} left</Badge>;
+  return   <Badge variant="success" className="text-[10px] px-1.5 py-0">{qty} left</Badge>;
 }
 
-export function ProductCard({ product }: { product: Product }) {
+interface ProductCardProps {
+  product: Product;
+  priority?: boolean;
+}
+
+export function ProductCard({ product, priority = false }: ProductCardProps) {
   const [open, setOpen] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  const totalAvailable = product.inventory.reduce(
-    (sum, inv) => sum + inv.availableQuantity,
-    0
-  );
-
+  const { gradient, Icon } = getTheme(product.name);
+  const totalAvailable = product.inventory.reduce((s, i) => s + i.availableQuantity, 0);
   const isOutOfStock = totalAvailable === 0;
 
   return (
     <>
       <div className="group relative flex flex-col rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-        {/* Image */}
-        <div className="relative h-52 w-full bg-slate-100 overflow-hidden">
-          {product.imageUrl && !imgError ? (
+
+        {/* ── Image area ─────────────────────────────────────────── */}
+        <div className="relative h-52 w-full overflow-hidden">
+
+          {/* Gradient placeholder — visible IMMEDIATELY, zero network wait */}
+          <div className={`absolute inset-0 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+            <Icon className="h-16 w-16 text-white/40" />
+          </div>
+
+          {/* Real image cross-fades in once loaded */}
+          {product.imageUrl && !imgError && (
             <Image
               src={product.imageUrl}
               alt={product.name}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              priority={priority}
+              className={`object-cover transition-opacity duration-500 group-hover:scale-105 transition-transform ${
+                imgLoaded ? "opacity-100" : "opacity-0"
+              }`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              onLoad={() => setImgLoaded(true)}
               onError={() => setImgError(true)}
             />
-          ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-              <ShoppingBag className="h-12 w-12 text-slate-300" />
-            </div>
           )}
 
-          {/* Out of stock overlay */}
+          {/* Out-of-stock overlay */}
           {isOutOfStock && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
               <span className="text-sm font-semibold text-slate-500 bg-white px-3 py-1 rounded-full border">
@@ -62,7 +88,7 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         </div>
 
-        {/* Content */}
+        {/* ── Content ────────────────────────────────────────────── */}
         <div className="flex flex-col flex-1 p-4 gap-3">
           <div>
             <h3 className="font-semibold text-slate-900 leading-snug">{product.name}</h3>
@@ -71,7 +97,6 @@ export function ProductCard({ product }: { product: Product }) {
             )}
           </div>
 
-          {/* Warehouse stock */}
           <div className="flex flex-col gap-1.5">
             {product.inventory.map((inv) => (
               <div key={inv.warehouseId} className="flex items-center justify-between">
@@ -84,7 +109,6 @@ export function ProductCard({ product }: { product: Product }) {
             ))}
           </div>
 
-          {/* Reserve button */}
           <Button
             className="mt-auto w-full rounded-xl font-semibold"
             disabled={isOutOfStock}
