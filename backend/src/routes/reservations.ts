@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { validate } from "../middleware/validate";
 import { CreateReservationSchema } from "../lib/schemas";
 import { createReservation } from "../db/reserve";
+import { withIdempotency } from "../lib/idempotency";
 import {
   NotFoundError,
   ReservationExpiredError,
@@ -21,9 +22,14 @@ router.post("/", validate(CreateReservationSchema), async (req, res, next) => {
       units: number;
     };
 
-    const reservation = await createReservation(productId, warehouseId, units);
+    const idempotencyKey = req.headers["idempotency-key"] as string | undefined;
 
-    res.status(201).json(serializeReservation(reservation));
+    const { body, status } = await withIdempotency(idempotencyKey, async () => {
+      const reservation = await createReservation(productId, warehouseId, units);
+      return { body: serializeReservation(reservation), status: 201 };
+    });
+
+    res.status(status).json(body);
   } catch (err) {
     next(err);
   }
@@ -57,21 +63,27 @@ router.get("/:id", async (req, res, next) => {
 // POST /api/reservations/:id/confirm
 router.post("/:id/confirm", async (req, res, next) => {
   try {
-    const reservation = await prisma.reservation.findUnique({
-      where: { id: req.params.id },
+    const idempotencyKey = req.headers["idempotency-key"] as string | undefined;
+
+    const { body, status } = await withIdempotency(idempotencyKey, async () => {
+      const reservation = await prisma.reservation.findUnique({
+        where: { id: req.params.id },
+      });
+
+      if (!reservation) throw new NotFoundError("Reservation not found");
+      if (reservation.status === "CONFIRMED") throw new AlreadyConfirmedError();
+      if (reservation.status === "RELEASED") throw new ReservationExpiredError("Reservation was cancelled");
+      if (reservation.expiresAt <= new Date()) throw new ReservationExpiredError();
+
+      const updated = await prisma.reservation.update({
+        where: { id: reservation.id },
+        data: { status: "CONFIRMED", confirmedAt: new Date() },
+      });
+
+      return { body: serializeReservation(updated), status: 200 };
     });
 
-    if (!reservation) throw new NotFoundError("Reservation not found");
-    if (reservation.status === "CONFIRMED") throw new AlreadyConfirmedError();
-    if (reservation.status === "RELEASED") throw new ReservationExpiredError("Reservation was cancelled");
-    if (reservation.expiresAt <= new Date()) throw new ReservationExpiredError();
-
-    const updated = await prisma.reservation.update({
-      where: { id: reservation.id },
-      data: { status: "CONFIRMED", confirmedAt: new Date() },
-    });
-
-    res.json(serializeReservation(updated));
+    res.status(status).json(body);
   } catch (err) {
     next(err);
   }
