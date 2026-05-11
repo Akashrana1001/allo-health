@@ -15,10 +15,10 @@ export default function ProductsLoading() {
             <div className="p-4 space-y-3">
               <Skeleton className="h-5 w-3/4" />
               <Skeleton className="h-3 w-full" />
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
               </div>
               <Skeleton className="h-10 w-full rounded-xl mt-1" />
             </div>
