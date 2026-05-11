@@ -1,78 +1,141 @@
-# Inventory Reservation System
+# Inventory Reservation System — Allo Engineering Take-Home
 
-Race-condition-safe inventory + reservation platform for multi-warehouse retail / D2C brands.
+A race-condition-safe inventory + reservation platform for multi-warehouse retail / D2C brands.
 
-When a customer checks out, the system holds units for 10 minutes. If payment succeeds the hold is confirmed permanently. If it fails or expires, stock is returned to available inventory automatically.
+**Live demo → https://frontend-nu-lake-96.vercel.app**
+
+---
+
+## The problem in one sentence
+
+Two customers reach checkout simultaneously for the last unit of a SKU. Without locking, both read `available = 1`, both proceed, and one unit gets sold twice. This system guarantees exactly one wins.
+
+---
+
+## Live URLs
+
+| Service | URL |
+|---|---|
+| Frontend (Vercel) | https://frontend-nu-lake-96.vercel.app |
+| Backend API (Render) | https://allo-health-v5rh.onrender.com |
+| Health check | https://allo-health-v5rh.onrender.com/health |
+| GitHub | https://github.com/Akashrana1001/allo-health |
+
+> **Debrief demo tip:** To trigger the 409 race condition live, open two browser tabs on the products page, find **"Adjustable Dumbbell"** (Delhi Hub — 1 unit) or **"Gym Gloves"** (Mumbai Central — 1 unit), and click Reserve from both tabs at the same time. Exactly one succeeds; the other sees "Not enough stock."
+
+---
 
 ## Repo layout
 
 ```
-backend/    Express + TypeScript + Prisma REST API (port 4000)
-frontend/   Next.js 14 App Router + Tailwind + shadcn/ui (port 3000)
+backend/    Express + TypeScript + Prisma REST API  →  deployed on Render
+frontend/   Next.js 14 (App Router) + Tailwind + shadcn/ui  →  deployed on Vercel
 ```
+
+> **Architecture note:** The task spec suggests a single Next.js app with API routes. I chose to separate the API into its own Express service for cleaner isolation and easier horizontal scaling of the concurrency-critical reservation endpoint. The trade-off is an extra service to deploy; the benefit is that the API can be tested, scaled, and reasoned about independently of the UI.
+
+---
 
 ## Quick start (local)
 
-```bash
-# 1. Backend
-cd backend
-cp .env.example .env          # fill in DATABASE_URL, DIRECT_URL, etc.
-npm install
-npm run prisma:generate
-npm run prisma:deploy         # applies migrations to Neon
-npm run seed                  # populates demo data
-npm run dev                   # http://localhost:4000
+### Prerequisites
 
-# 2. Frontend (separate terminal)
-cd frontend
-cp .env.example .env.local    # set NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+- Node.js 20+
+- A [Neon](https://neon.tech) Postgres project (free tier)
+- An [Upstash](https://upstash.com) Redis database (free tier, optional — idempotency degrades gracefully without it)
+
+### 1. Backend
+
+```bash
+cd backend
+cp .env.example .env
+# Fill in DATABASE_URL, DIRECT_URL, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+# CRON_SECRET can be any random string for local dev
+
 npm install
-npm run dev                   # http://localhost:3000
+npm run prisma:migrate   # creates tables on your Neon database
+npm run seed             # populates 6 products, 3 warehouses, 18 inventory rows
+npm run dev              # http://localhost:4000
 ```
 
-Browse to `http://localhost:3000`. The root redirects to `/products`.
+### 2. Frontend
 
-## Environment variables
+```bash
+cd frontend
+cp .env.example .env.local
+# Set NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 
-### backend/.env
+npm install
+npm run dev              # http://localhost:3000
+```
+
+Browse to `http://localhost:3000`. The root `/` redirects to `/products`.
+
+### Environment variables
+
+**backend/.env**
 
 | Variable | Description |
 |---|---|
-| `DATABASE_URL` | Neon pooled connection string (used at runtime) |
-| `DIRECT_URL` | Neon direct connection string (used for migrations only) |
+| `DATABASE_URL` | Neon **pooled** connection string (runtime) |
+| `DIRECT_URL` | Neon **direct** connection string (migrations only) |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis endpoint |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis auth token |
-| `CRON_SECRET` | Random string that authorises `POST /api/cron/expire` |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token |
+| `CRON_SECRET` | Random string — authorises `POST /api/cron/expire` |
 | `FRONTEND_ORIGIN` | CORS allowed origin (e.g. `http://localhost:3000`) |
 | `PORT` | Server port (default `4000`) |
 | `RESERVATION_TTL_MINUTES` | Hold window in minutes (default `10`) |
 
-### frontend/.env.local
+**frontend/.env.local**
 
 | Variable | Description |
 |---|---|
-| `NEXT_PUBLIC_API_BASE_URL` | URL of the Express backend |
+| `NEXT_PUBLIC_API_BASE_URL` | Full URL of the Express backend |
+
+---
 
 ## Architecture
 
 ```
-Browser ──► Next.js (frontend)
-                │  HTTP
-                ▼
-           Express (backend) ──► Postgres (Neon)
-                │                     ▲
-                └──► Redis (Upstash)   │
-                     idempotency cache │
-                                       │
-                node-cron (in-process) ┘
-                runs every minute
+Browser
+  │
+  │  HTTPS
+  ▼
+Next.js — Vercel (frontend)
+  │
+  │  HTTPS (REST API)
+  ▼
+Express — Render (backend)
+  │                    │
+  │  Prisma ORM        │  @upstash/redis
+  ▼                    ▼
+Postgres (Neon)    Redis (Upstash)
+                   idempotency cache
+
+[ node-cron, in-process on Render ]
+  fires every minute → releases expired reservations
 ```
+
+---
 
 ## Concurrency design
 
-The core problem: two simultaneous checkout requests for the last unit of a SKU. Without locking, both read `available = 1`, both proceed, and one unit gets sold twice.
+### The double-spend problem
 
-**Solution: pessimistic row-level locking with `SELECT FOR UPDATE`.**
+Without locking, two simultaneous requests for the last unit produce a race:
+
+```
+T1: SELECT available = 1   → ok, proceed
+T2: SELECT available = 1   → ok, proceed
+T1: UPDATE reserved += 1   → reserved = 1
+T2: UPDATE reserved += 1   → reserved = 2, available = -1  ← double-spend
+```
+
+Both transactions read `available = 1` before either writes. Both succeed. One unit is sold twice.
+
+### Solution: pessimistic row-level locking
+
+Every reservation runs inside a Postgres transaction that opens with `SELECT … FOR UPDATE` on the `Inventory` row for that `(productId, warehouseId)` pair:
 
 ```sql
 BEGIN;
@@ -80,61 +143,143 @@ BEGIN;
 SELECT "totalQuantity", "reservedQuantity"
 FROM "Inventory"
 WHERE "productId" = $1 AND "warehouseId" = $2
-FOR UPDATE;        -- exclusive lock on this row
+FOR UPDATE;                  -- exclusive row lock
 
--- check available = totalQuantity - reservedQuantity
--- if available < requested units → ROLLBACK → 409
+-- T2 blocks here until T1 commits
 
-UPDATE "Inventory" SET "reservedQuantity" = "reservedQuantity" + $3 ...;
-INSERT INTO "Reservation" (...) VALUES (...);
+-- application checks: available = totalQuantity - reservedQuantity
+-- if available < requested → ROLLBACK → 409 INSUFFICIENT_STOCK
 
-COMMIT;
+UPDATE "Inventory"
+SET "reservedQuantity" = "reservedQuantity" + $3
+WHERE "productId" = $1 AND "warehouseId" = $2;
+
+INSERT INTO "Reservation" (..., "status" = 'PENDING', "expiresAt" = NOW() + '10 minutes')
+RETURNING *;
+
+COMMIT;                      -- T2 unblocks, re-reads, finds 0 available → 409
 ```
 
-The second concurrent request blocks on `FOR UPDATE` until the first transaction commits. It then re-reads the updated `reservedQuantity`, finds zero available, and returns `409 INSUFFICIENT_STOCK`. Exactly one request wins; the loser gets a clear error immediately.
-
-**Why not optimistic locking (version column + retry)?**
-Optimistic locking retries on conflict, which amplifies load under real contention and can starve slow clients. In an inventory system where stock genuinely runs out, the losing request will fail on retry too — the retry is wasted work. Pessimistic locking serialises access and returns the right error in one round-trip.
+**Why `FOR UPDATE` and not optimistic locking?**
+Optimistic locking (version column + retry) amplifies load under real contention and can starve slow clients. In an inventory system where stock genuinely runs out, the losing request fails on retry too — the retry is wasted work. `FOR UPDATE` serialises access to a single row, guarantees one winner, and returns the correct error to the loser in one round-trip.
 
 **Why not Redis Redlock?**
-Redlock is an advisory lock. It does not atomically check-and-update Postgres, so you'd still need a database transaction. That's two distributed systems that must both be healthy for every reservation request. Postgres already serialises correctly here; adding Redis for locking would be complexity without benefit.
+Redlock is an advisory lock. It does not atomically check-and-update Postgres, so you still need a database transaction. That is two distributed systems that must both be available for every reservation. Postgres already serialises correctly with `FOR UPDATE` — adding Redis for locking would be complexity without benefit. Redis is used only for idempotency caching (the bonus feature), where it is the right tool.
 
-## Expiry mechanism
+**Code location:** `backend/src/db/reserve.ts`
 
-Two complementary layers:
+---
 
-**Layer 1 — Lazy cleanup on read (immediate correctness)**
+## Reservation expiry
 
-`GET /api/products` computes `availableQuantity` by summing only `PENDING` reservations where `expiresAt > NOW()`. Expired holds are invisible on read regardless of whether the background job has run. This means availability is always correct, even in the window between expiry and the next cron tick.
+Expired `PENDING` reservations must release their hold on stock automatically. Two complementary layers handle this:
 
-**Layer 2 — Background cleanup (database hygiene)**
+### Layer 1 — Lazy cleanup on read (immediate correctness)
+
+`GET /api/products` computes `availableQuantity` by summing only `PENDING` reservations where `expiresAt > NOW()`:
+
+```typescript
+// backend/src/routes/products.ts
+const activeReserved = await prisma.reservation.aggregate({
+  _sum: { units: true },
+  where: {
+    productId, warehouseId,
+    status: "PENDING",
+    expiresAt: { gt: now },   // ← expired holds excluded
+  },
+});
+availableQuantity = totalQuantity - (activeReserved._sum.units ?? 0);
+```
+
+Expired holds are invisible on read regardless of whether the background job has run. This means availability is always accurate — even in the seconds between expiry and the next cron tick.
+
+### Layer 2 — Background cleanup (database hygiene)
 
 A `node-cron` job inside the Express process fires every minute. It:
-1. Finds all `PENDING` reservations where `expiresAt <= NOW()`
-2. Groups them by `(productId, warehouseId)` and sums units to return
-3. Decrements `reservedQuantity` and flips status to `RELEASED` in a single transaction
 
-The cron endpoint is also exposed as `POST /api/cron/expire` (protected by `Authorization: Bearer <CRON_SECRET>`) so an external scheduler (Vercel Cron, GitHub Actions, etc.) can trigger it independently of the in-process job.
+1. Finds all `PENDING` reservations where `expiresAt ≤ NOW()`
+2. Groups them by `(productId, warehouseId)` and sums units to return
+3. Decrements `reservedQuantity` and flips status to `RELEASED` in a **single transaction**
+
+The `Reservation(status, expiresAt)` compound index makes this query fast even at scale.
+
+The cron job is also exposed as `POST /api/cron/expire` (protected by `Authorization: Bearer <CRON_SECRET>`) so any external scheduler can trigger it independently.
+
+**Code location:** `backend/src/db/expire.ts`, `backend/src/routes/cron.ts`
 
 **Why both layers?**
-Lazy cleanup alone keeps availability accurate but lets `reservedQuantity` drift upward — confusing in admin views and risky if the lazy logic ever has a bug. Background cleanup alone leaves a ≤60-second window after expiry where stock looks depleted. Together, accuracy is immediate and the database stays clean.
+Lazy cleanup keeps availability exact but lets `reservedQuantity` drift upward — confusing in admin views and a latent bug if the lazy logic ever has a regression. Background cleanup keeps the database clean but leaves up to a 60-second window after expiry where `reservedQuantity` is stale. Together, availability is always exact and the database stays clean.
+
+---
 
 ## Bonus: Idempotency
 
-`POST /api/reservations` and `POST /api/reservations/:id/confirm` support the `Idempotency-Key` header. If a client retries with the same key, the server returns the original response without repeating the side effect.
+`POST /api/reservations` and `POST /api/reservations/:id/confirm` support the `Idempotency-Key` request header. If a client retries with the same key, the server returns the original response without repeating the side effect — no double reservation, no double charge.
 
-**Implementation (`backend/src/lib/idempotency.ts`):**
-1. Check Upstash Redis for a cached response keyed by `idem:<key>` — sub-millisecond fast path
-2. If not in Redis, check the `IdempotencyKey` Postgres table — durable fallback if Redis evicts the key
-3. On cache miss, run the handler, then write the result to both Redis (24h TTL) and Postgres
-4. **Errors are not cached** — a `409` or `410` response is not stored, so retries can re-validate
+### Implementation
 
-This prevents a network retry from creating two reservations or charging twice.
+```
+Request with Idempotency-Key header
+         │
+         ▼
+  Redis GET idem:<key>  ──hit──►  return cached response (sub-ms)
+         │ miss
+         ▼
+  Postgres SELECT idempotency_keys WHERE key = ?  ──hit──►  return DB response
+         │ miss
+         ▼
+  Execute handler (create reservation / confirm)
+         │
+         ▼
+  Store result in Redis (24h TTL)  +  INSERT idempotency_keys
+         │
+         ▼
+  Return response
+```
 
-## Trade-offs and future work
+**Key properties:**
+- Redis is the fast path (sub-millisecond reads on cache hits)
+- Postgres `IdempotencyKey` table is the durable fallback if Redis evicts the key before TTL
+- **Errors are not cached** — a `409` or `410` response is not stored, so a retry can re-validate against current state
+- 24-hour TTL matches standard industry practice (Stripe, PayPal)
 
-- **No authentication** — reservations are not scoped to a user session. A production system would attach a `userId` to each reservation and restrict confirm/release to the owner.
-- **Cron granularity is 1 minute** — a persistent background worker (e.g. BullMQ with delayed jobs) would allow sub-minute precision and guaranteed delivery.
-- **No rate limiting** — the reservation endpoint could be abused to lock up all stock without buying. A per-IP or per-session rate limiter (e.g. via Redis sliding window) would mitigate this.
-- **No real-time stock sync across tabs** — the frontend polls every 5 seconds. WebSockets or Server-Sent Events would push stock updates instantly.
-- **`reservedQuantity` column vs. live aggregation** — `reservedQuantity` is a denormalised counter updated on every reservation/release. An alternative is to always compute it from the `Reservation` table at query time. That's a simpler schema but slower reads under load; the counter approach is the standard trade-off in high-throughput inventory systems.
+**Code location:** `backend/src/lib/idempotency.ts`
+
+---
+
+## API reference
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/products` | Products with `availableQuantity` per warehouse (lazy-cleaned) |
+| `GET` | `/api/warehouses` | All warehouses |
+| `POST` | `/api/reservations` | Reserve units — `409` if insufficient stock, supports `Idempotency-Key` |
+| `GET` | `/api/reservations/:id` | Fetch a single reservation with product + warehouse details |
+| `POST` | `/api/reservations/:id/confirm` | Confirm (payment succeeded) — `410` if expired, supports `Idempotency-Key` |
+| `POST` | `/api/reservations/:id/release` | Release early — idempotent if already released |
+| `POST` | `/api/cron/expire` | Trigger expiry cleanup — requires `Authorization: Bearer <CRON_SECRET>` |
+| `GET` | `/health` | Uptime check |
+
+All error responses use the shape `{ error: string, code: string }`.
+
+---
+
+## Trade-offs and things I'd do differently
+
+**Architecture deviation**
+The task suggests a single Next.js app with API routes. I separated the API into its own Express service. The upside is cleaner isolation and independent deployability of the concurrency-critical layer. The downside is two services to deploy and an extra CORS configuration step.
+
+**No authentication**
+Reservations are not scoped to a user session. Anyone who knows a reservation ID can confirm or cancel it. A production system would attach a `userId` or `sessionId` to each reservation and enforce ownership on confirm/release.
+
+**Cron granularity is 1 minute**
+The `node-cron` in-process scheduler fires every minute, so there is up to a 60-second window after expiry where `reservedQuantity` is stale in the database (availability is still accurate via the lazy layer). A persistent worker with delayed jobs (e.g. BullMQ) would allow sub-minute precision and guaranteed delivery even if the process restarts mid-window.
+
+**No rate limiting**
+The reservation endpoint has no per-IP or per-session rate limit. A bad actor could lock up all stock across all warehouses without purchasing. A sliding-window rate limiter (implementable with the existing Upstash Redis connection) would mitigate this.
+
+**Polling instead of WebSockets**
+The reservation detail page polls `GET /api/reservations/:id` every 5 seconds to detect state changes from other tabs. Server-Sent Events or WebSockets would push updates instantly without the polling overhead, but polling is simpler and sufficient for a debrief demo.
+
+**`reservedQuantity` counter vs. live aggregation**
+`reservedQuantity` is a denormalised counter on the `Inventory` row, updated on every reservation and release. An alternative is to always compute it from the `Reservation` table at query time, which gives a simpler schema. The counter approach is faster under read-heavy load (one row read vs. an aggregate query) but adds a consistency obligation: every write path must update it atomically in the same transaction. The `FOR UPDATE` lock on `Inventory` enforces this.
