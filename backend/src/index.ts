@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { env } from "./config/env";
+import { errorHandler } from "./middleware/errorHandler";
 
 const app = express();
 
@@ -25,6 +26,8 @@ app.get("/health", (_req, res) => {
 app.use((req, res) => {
   res.status(404).json({ error: `Not found: ${req.method} ${req.path}`, code: "NOT_FOUND" });
 });
+
+app.use(errorHandler);
 
 app.listen(env.port, () => {
   console.log(`[api] listening on http://localhost:${env.port}`);
