@@ -1,0 +1,92 @@
+// Inventory + reservation data model.
+//
+// Concurrency note: every reservation targets a single Inventory row identified
+// by the compound unique key (productId, warehouseId). That row is the lock
+// target for `SELECT ... FOR UPDATE` inside the reservation transaction, which
+// is what makes the reservation API race-condition safe.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  RELEASED
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  price       Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  inventory    Inventory[]
+  reservations Reservation[]
+
+  @@index([createdAt])
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  name      String
+  location  String
+  createdAt DateTime @default(now())
+
+  inventory    Inventory[]
+  reservations Reservation[]
+}
+
+model Inventory {
+  id               String @id @default(cuid())
+  productId        String
+  warehouseId      String
+  totalQuantity    Int
+  reservedQuantity Int    @default(0)
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, warehouseId])
+  @@index([productId])
+  @@index([warehouseId])
+}
+
+model Reservation {
+  id          String            @id @default(cuid())
+  productId   String
+  warehouseId String
+  units       Int
+  status      ReservationStatus @default(PENDING)
+  expiresAt   DateTime
+  confirmedAt DateTime?
+  releasedAt  DateTime?
+  createdAt   DateTime          @default(now())
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  // Compound index used by the expiry cron to find expired pending rows
+  // and by the read API's lazy-cleanup subquery.
+  @@index([status, expiresAt])
+  @@index([productId, warehouseId, status])
+}
+
+// Idempotency cache backing store. Redis is the fast path; this table is the
+// durable fallback if a key is evicted from Redis before the TTL elapses.
+model IdempotencyKey {
+  key          String   @id
+  responseBody Json
+  statusCode   Int
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
