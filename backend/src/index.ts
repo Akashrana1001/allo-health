@@ -4,6 +4,7 @@ import { env } from "./config/env";
 import { errorHandler } from "./middleware/errorHandler";
 import productsRouter from "./routes/products";
 import warehousesRouter from "./routes/warehouses";
+import reservationsRouter from "./routes/reservations";
 
 const app = express();
 
@@ -21,8 +22,8 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/products", productsRouter);
 app.use("/api/warehouses", warehousesRouter);
-// app.use("/api/reservations", reservationsRouter); — Phase 6+
-// app.use("/api/cron", cronRouter);                 — Phase 8
+app.use("/api/reservations", reservationsRouter);
+// app.use("/api/cron", cronRouter); — Phase 8
 
 app.use((req, res) => {
   res.status(404).json({ error: `Not found: ${req.method} ${req.path}`, code: "NOT_FOUND" });
