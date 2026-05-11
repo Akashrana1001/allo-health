@@ -2,11 +2,13 @@ import { apiFetch } from "@/lib/api";
 import { ProductCard } from "@/components/product-card";
 import type { Product } from "@/lib/schemas";
 
-export const revalidate = 10;
+// Always render at request time so stock levels are fresh and build
+// doesn't fail when the backend isn't reachable from Vercel's build machines.
+export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
   const products = await apiFetch<Product[]>("/api/products", {
-    next: { revalidate: 10 },
+    cache: "no-store",
   });
 
   return (
