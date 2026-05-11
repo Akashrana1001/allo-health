@@ -24,11 +24,12 @@ router.post("/", validate(CreateReservationSchema), async (req, res, next) => {
 
     const idempotencyKey = req.headers["idempotency-key"] as string | undefined;
 
-    const { body, status } = await withIdempotency(idempotencyKey, async () => {
+    const { body, status, replayed } = await withIdempotency(idempotencyKey, async () => {
       const reservation = await createReservation(productId, warehouseId, units);
       return { body: serializeReservation(reservation), status: 201 };
     });
 
+    if (replayed) res.setHeader("X-Idempotent-Replay", "true");
     res.status(status).json(body);
   } catch (err) {
     next(err);
@@ -65,7 +66,7 @@ router.post("/:id/confirm", async (req, res, next) => {
   try {
     const idempotencyKey = req.headers["idempotency-key"] as string | undefined;
 
-    const { body, status } = await withIdempotency(idempotencyKey, async () => {
+    const { body, status, replayed } = await withIdempotency(idempotencyKey, async () => {
       const reservation = await prisma.reservation.findUnique({
         where: { id: req.params.id },
       });
@@ -99,6 +100,7 @@ router.post("/:id/confirm", async (req, res, next) => {
       return { body: serializeReservation(updated), status: 200 };
     });
 
+    if (replayed) res.setHeader("X-Idempotent-Replay", "true");
     res.status(status).json(body);
   } catch (err) {
     next(err);
