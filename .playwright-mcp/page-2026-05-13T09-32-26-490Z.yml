@@ -1,0 +1,18 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Allo Inventory" [ref=e4] [cursor=pointer]:
+        - /url: /products
+        - img [ref=e5]
+        - text: Allo Inventory
+      - navigation [ref=e8]:
+        - link "Products" [ref=e9] [cursor=pointer]:
+          - /url: /products
+        - generic [ref=e10]: Live Demo
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]: Live Inventory
+      - heading "Reserve Before It's Gone" [level=1] [ref=e16]
+      - paragraph [ref=e17]: Stock is held for 10 minutes once you reserve — confirm your purchase before the timer runs out.
+  - region "Notifications alt+T"
+  - alert [ref=e79]

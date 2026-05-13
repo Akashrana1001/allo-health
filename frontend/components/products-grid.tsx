@@ -30,11 +30,16 @@ function LoadingSkeleton() {
   );
 }
 
-export function ProductsGrid() {
+interface ProductsGridProps {
+  initialProducts?: Product[];
+}
+
+export function ProductsGrid({ initialProducts }: ProductsGridProps) {
   const { data: products, isLoading, isError, refetch, isFetching } = useQuery<Product[]>({
     queryKey: ["products"],
     queryFn: () => apiFetch<Product[]>("/api/products"),
-    staleTime: 10_000,
+    initialData: initialProducts,
+    staleTime: 30_000,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });

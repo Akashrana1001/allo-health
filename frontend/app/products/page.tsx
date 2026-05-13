@@ -1,8 +1,23 @@
 import { ProductsGrid } from "@/components/products-grid";
+import { apiFetch } from "@/lib/api";
+import type { Product } from "@/lib/schemas";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 15;
 
-export default function ProductsPage() {
+async function getInitialProducts(): Promise<Product[] | undefined> {
+  try {
+    return await apiFetch<Product[]>("/api/products", {
+      next: { revalidate },
+    });
+  } catch (error) {
+    console.error("[products] initial fetch failed", error);
+    return undefined;
+  }
+}
+
+export default async function ProductsPage() {
+  const initialProducts = await getInitialProducts();
+
   return (
     <main className="container py-8 max-w-6xl">
       <div className="mb-10">
@@ -18,7 +33,7 @@ export default function ProductsPage() {
         </p>
       </div>
 
-      <ProductsGrid />
+      <ProductsGrid initialProducts={initialProducts} />
     </main>
   );
 }

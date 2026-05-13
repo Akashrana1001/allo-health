@@ -1,0 +1,176 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Allo Inventory" [ref=e4] [cursor=pointer]:
+        - /url: /products
+        - img [ref=e5]
+        - text: Allo Inventory
+      - navigation [ref=e8]:
+        - link "Products" [ref=e9] [cursor=pointer]:
+          - /url: /products
+        - generic [ref=e10]: Live Demo
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]: Live Inventory
+      - heading "Reserve Before It's Gone" [level=1] [ref=e16]
+      - paragraph [ref=e17]: Stock is held for 10 minutes once you reserve — confirm your purchase before the timer runs out.
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - img [ref=e84]
+          - img "Running Shoes X1" [ref=e87]
+          - generic [ref=e88]: ₹4,999
+        - generic [ref=e89]:
+          - generic [ref=e90]:
+            - heading "Running Shoes X1" [level=3] [ref=e91]
+            - paragraph [ref=e92]: Lightweight daily trainer with responsive cushioning for every stride.
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - img [ref=e96]
+                - text: Mumbai Central
+              - generic [ref=e99]: 25 left
+            - generic [ref=e100]:
+              - generic [ref=e101]:
+                - img [ref=e102]
+                - text: Delhi Hub
+              - generic [ref=e105]: 18 left
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - img [ref=e108]
+                - text: Bangalore Depot
+              - generic [ref=e111]: 10 left
+          - button "Reserve Now" [ref=e112] [cursor=pointer]
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - img [ref=e116]
+          - img "Yoga Mat Pro" [ref=e119]
+          - generic [ref=e120]: ₹1,299
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - heading "Yoga Mat Pro" [level=3] [ref=e123]
+            - paragraph [ref=e124]: Non-slip 6mm mat with alignment lines, ideal for all styles.
+          - generic [ref=e125]:
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - img [ref=e128]
+                - text: Mumbai Central
+              - generic [ref=e131]: 40 left
+            - generic [ref=e132]:
+              - generic [ref=e133]:
+                - img [ref=e134]
+                - text: Delhi Hub
+              - generic [ref=e137]: Out of Stock
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - img [ref=e140]
+                - text: Bangalore Depot
+              - generic [ref=e143]: 15 left
+          - button "Reserve Now" [ref=e144] [cursor=pointer]
+      - generic [ref=e145]:
+        - generic [ref=e146]:
+          - img [ref=e148]
+          - img "Resistance Band Set" [ref=e152]
+          - generic [ref=e153]: ₹699
+        - generic [ref=e154]:
+          - generic [ref=e155]:
+            - heading "Resistance Band Set" [level=3] [ref=e156]
+            - paragraph [ref=e157]: Set of 5 latex bands with progressive resistance levels.
+          - generic [ref=e158]:
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - img [ref=e161]
+                - text: Mumbai Central
+              - generic [ref=e164]: 8 left
+            - generic [ref=e165]:
+              - generic [ref=e166]:
+                - img [ref=e167]
+                - text: Delhi Hub
+              - generic [ref=e170]: 12 left
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - img [ref=e173]
+                - text: Bangalore Depot
+              - generic [ref=e176]: "Low: 5"
+          - button "Reserve Now" [ref=e177] [cursor=pointer]
+      - generic [ref=e178]:
+        - generic [ref=e179]:
+          - img [ref=e181]
+          - img "Foam Roller" [ref=e187]
+          - generic [ref=e188]: ₹999
+        - generic [ref=e189]:
+          - generic [ref=e190]:
+            - heading "Foam Roller" [level=3] [ref=e191]
+            - paragraph [ref=e192]: High-density EVA foam roller for post-workout recovery.
+          - generic [ref=e193]:
+            - generic [ref=e194]:
+              - generic [ref=e195]:
+                - img [ref=e196]
+                - text: Mumbai Central
+              - generic [ref=e199]: Out of Stock
+            - generic [ref=e200]:
+              - generic [ref=e201]:
+                - img [ref=e202]
+                - text: Delhi Hub
+              - generic [ref=e205]: 20 left
+            - generic [ref=e206]:
+              - generic [ref=e207]:
+                - img [ref=e208]
+                - text: Bangalore Depot
+              - generic [ref=e211]: "Low: 3"
+          - button "Reserve Now" [ref=e212] [cursor=pointer]
+      - generic [ref=e213]:
+        - generic [ref=e214]:
+          - img [ref=e216]
+          - img "Gym Gloves" [ref=e219]
+          - generic [ref=e220]: ₹499
+        - generic [ref=e221]:
+          - generic [ref=e222]:
+            - heading "Gym Gloves" [level=3] [ref=e223]
+            - paragraph [ref=e224]: Full-palm protection with wrist support for heavy lifts.
+          - generic [ref=e225]:
+            - generic [ref=e226]:
+              - generic [ref=e227]:
+                - img [ref=e228]
+                - text: Mumbai Central
+              - generic [ref=e231]: "Low: 1"
+            - generic [ref=e232]:
+              - generic [ref=e233]:
+                - img [ref=e234]
+                - text: Delhi Hub
+              - generic [ref=e237]: "Low: 4"
+            - generic [ref=e238]:
+              - generic [ref=e239]:
+                - img [ref=e240]
+                - text: Bangalore Depot
+              - generic [ref=e243]: "Low: 2"
+          - button "Reserve Now" [ref=e244] [cursor=pointer]
+      - generic [ref=e245]:
+        - generic [ref=e246]:
+          - img [ref=e248]
+          - img "Adjustable Dumbbell" [ref=e252]
+          - generic [ref=e254]: Out of Stock
+          - generic [ref=e255]: ₹8,999
+        - generic [ref=e256]:
+          - generic [ref=e257]:
+            - heading "Adjustable Dumbbell" [level=3] [ref=e258]
+            - paragraph [ref=e259]: Single 5–25 kg adjustable dumbbell. Very limited stock — great for demo.
+          - generic [ref=e260]:
+            - generic [ref=e261]:
+              - generic [ref=e262]:
+                - img [ref=e263]
+                - text: Delhi Hub
+              - generic [ref=e266]: Out of Stock
+            - generic [ref=e267]:
+              - generic [ref=e268]:
+                - img [ref=e269]
+                - text: Mumbai Central
+              - generic [ref=e272]: Out of Stock
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - img [ref=e275]
+                - text: Bangalore Depot
+              - generic [ref=e278]: Out of Stock
+          - button "Unavailable" [disabled]
+  - region "Notifications alt+T"
+  - alert [ref=e79]
